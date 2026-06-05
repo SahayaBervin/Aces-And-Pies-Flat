@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ACES & PIES Flattener — Fully Functional Web App</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f8fa;--surface:#fff;--border:#e2e5ea;--border2:#c8cdd6;
+  --acc:#0d9e71;--acc-bg:#f0faf6;--acc-bdr:#b2dfd0;
+  --blue:#185fa5;--blue-bg:#eef5fd;--blue-bdr:#b5d4f4;
+  --warn:#b87a00;--warn-bg:#fdf7ed;--warn-bdr:#f5c85a;
+  --danger:#c0392b;--danger-bg:#fdf0ee;--danger-bdr:#f5b8b3;
+  --text:#1a1d23;--text2:#5a6478;--text3:#9aa0ad;
+  --mono:'IBM Plex Mono',Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --r:8px;
+}
+body{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--bg);min-height:100vh;display:grid;grid-template-rows:48px 1fr}
+
+.topbar{display:flex;align-items:center;gap:10px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:200}
+.logo{width:26px;height:26px;border-radius:6px;background:var(--acc);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0}
+.app-name{font-weight:600;font-size:14px}
+.badge{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--acc-bg);color:var(--acc);font-weight:600;border:1px solid var(--acc-bdr)}
+.badge2{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font-weight:600;border:1px solid var(--blue-bdr)}
+.topbar-r{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px}
+.db-pill{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:var(--bg);border:1px solid var(--border2);font-size:11px;color:var(--text2)}
+.db-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .3s}
+.db-dot.on{background:var(--acc)}
+
+.layout{display:grid;grid-template-columns:176px 1fr;height:calc(100vh - 48px)}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:8px 0;overflow-y:auto;flex-shrink:0}
+.nav-sec{font-size:10px;font-weight:700;color:var(--text3);padding:14px 16px 4px;letter-spacing:.8px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);border-left:2px solid transparent;transition:all .1s;user-select:none}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.on{color:var(--acc);border-left-color:var(--acc);background:var(--acc-bg)}
+.nav-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.nav-badge{margin-left:auto;font-size:10px;padding:1px 5px;border-radius:8px;background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-bdr)}
+
+.main{overflow-y:auto;padding:22px;background:var(--bg)}
+.panel{display:none}.panel.on{display:block}
+.ph{font-size:17px;font-weight:600;margin-bottom:3px}
+.ps{font-size:12px;color:var(--text2);margin-bottom:16px}
+
+.ib{border-radius:var(--r);padding:10px 14px;font-size:12px;line-height:1.7;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start}
+.ib-blue{background:var(--blue-bg);border:1px solid var(--blue-bdr);color:var(--blue)}
+.ib-green{background:var(--acc-bg);border:1px solid var(--acc-bdr);color:#0a7a54}
+.ib-warn{background:var(--warn-bg);border:1px solid var(--warn-bdr);color:var(--warn)}
+.ib-red{background:var(--danger-bg);border:1px solid var(--danger-bdr);color:var(--danger)}
+.ib i{font-size:15px;flex-shrink:0;margin-top:1px}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px}
+.ctitle{font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text)}
+
+.fz-wrap{margin-bottom:14px}
+.fz-lbl{font-size:12px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.tag{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600}
+.tag-r{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bdr)}
+.tag-o{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bdr)}
+.fz{border:1.5px dashed var(--border2);border-radius:var(--r);padding:16px 12px;cursor:pointer;text-align:center;background:var(--surface);position:relative;transition:all .15s;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.fz:hover,.fz.drag{border-color:var(--acc);background:var(--acc-bg)}
+.fz.filled{border-style:solid;border-color:var(--acc);background:var(--acc-bg)}
+.fz.err-state{border-color:var(--danger);background:var(--danger-bg)}
+.fz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.fz-ico{font-size:20px}
+.fz-hint{font-size:11px;color:var(--text3)}
+.fz-name{font-size:11px;color:var(--acc);font-weight:600;word-break:break-all;padding:0 8px;text-align:center}
+
+.opt-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.tog{width:33px;height:18px;border-radius:9px;background:var(--border2);cursor:pointer;position:relative;transition:background .15s;flex-shrink:0;border:none;outline:none}
+.tog.on{background:var(--acc)}
+.tog::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:7px;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.tog.on::after{transform:translateX(15px)}
+.opt-lbl{font-size:12px;color:var(--text2)}
+
+.btn{padding:9px 18px;border-radius:var(--r);border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .12s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-full{width:100%;justify-content:center}
+.btn-g{background:var(--acc);color:#fff}.btn-g:hover:not(:disabled){background:#0b8562}
+.btn-b{background:var(--blue);color:#fff}.btn-b:hover:not(:disabled){background:#134e8a}
+.btn-o{background:transparent;color:var(--text2);border:1px solid var(--border2)}.btn-o:hover:not(:disabled){background:var(--bg)}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover:not(:disabled){background:#a93226}
+.btn:disabled{background:var(--border);color:var(--text3);cursor:not-allowed;opacity:.6}
+
+.prog-wrap{margin:12px 0 4px;display:none}
+.prog-wrap.show{display:block}
+.prog-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:5px}
+.prog-fill{height:100%;background:var(--acc);border-radius:2px;transition:width .25s;width:0}
+.prog-st{font-size:11px;color:var(--text2)}
+
+.log-box{background:#1a1d27;border-radius:var(--r);padding:11px 13px;height:140px;overflow-y:auto;font-family:var(--mono);font-size:11px;line-height:1.85;margin-top:10px}
+.ll{display:block}.ll.g{color:#a6e3a1}.ll.b{color:#89b4fa}.ll.w{color:#f9e2af}.ll.e{color:#f38ba8}.ll.m{color:#585b70}
+
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.sv{font-size:20px;font-weight:700;color:var(--acc);line-height:1}
+.sv.b{color:var(--blue)}
+.sv.r{color:var(--danger)}
+.sl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+
+/* Preview table */
+.tbl-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.tbl-toolbar input{flex:1;min-width:150px;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;outline:none}
+.tbl-toolbar input:focus{border-color:var(--acc)}
+.tbl-toolbar select{padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;background:var(--surface);outline:none}
+.tbl-outer{overflow:auto;border:1px solid var(--border);border-radius:var(--r);max-height:420px}
+.tbl-outer table{width:max-content;min-width:100%;border-collapse:collapse;font-size:11px}
+.tbl-outer th{background:#f1f3f6;padding:7px 10px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;font-size:10px;color:var(--text2);letter-spacing:.3px;text-transform:uppercase;z-index:10}
+.tbl-outer td{padding:6px 10px;border-bottom:.5px solid var(--border);white-space:nowrap;color:var(--text);max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.tbl-outer tr:last-child td{border-bottom:none}
+.tbl-outer tr:hover td{background:#f8f9fb}
+.tbl-empty{text-align:center;padding:40px;color:var(--text3);font-size:12px}
+
+/* Column picker */
+.cpick-bar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.cpick-bar input{flex:1;min-width:150px;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;outline:none}
+.cpick-bar input:focus{border-color:var(--acc)}
+.cpick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:4px;max-height:220px;overflow-y:auto;padding:2px}
+.ci{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:11px;border:1px solid transparent;transition:all .1s;user-select:none}
+.ci:hover{background:var(--bg)}
+.ci.sel{background:var(--acc-bg);border-color:var(--acc-bdr);color:var(--acc)}
+.ci input{accent-color:var(--acc);cursor:pointer;flex-shrink:0}
+.cpick-actions{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.cpick-actions button{font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .1s}
+.cpick-actions button:hover{background:var(--bg);color:var(--text)}
+.col-sel-info{font-size:11px;color:var(--text3);margin-left:auto}
+
+/* Error list */
+.err-item{background:var(--danger-bg);border:1px solid var(--danger-bdr);border-radius:var(--r);padding:10px 13px;margin-bottom:8px}
+.err-item-head{font-size:12px;font-weight:600;color:var(--danger);display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.err-item-body{font-size:11px;color:var(--danger);font-family:var(--mono);opacity:.85}
+
+/* Pies sheets selector */
+.sheet-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.sheet-tab{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--text2);transition:all .1s}
+.sheet-tab:hover{background:var(--bg)}
+.sheet-tab.on{background:var(--acc-bg);border-color:var(--acc-bdr);color:var(--acc)}
+
+hr{border:none;border-top:1px solid var(--border);margin:14px 0}
+
+/* Loading overlay */
+#loader{position:fixed;inset:0;background:rgba(247,248,250,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px}
+#loader.hide{display:none}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loader p{font-size:13px;color:var(--text2)}
+</style>
+</head>
+<body>
+
+<!-- Loading overlay while sql.js loads -->
+<div id="loader">
+  <div class="spin"></div>
+  <p id="loader-msg">Loading SQLite engine (sql.js)…</p>
+</div>
+
+<div class="topbar">
+  <div class="logo">A&P</div>
+  <span class="app-name">ACES &amp; PIES Flattener</span>
+  <span class="badge">Fully Functional</span>
+  <span class="badge2">Runs in Browser</span>
+  <div class="topbar-r">
+    <div class="db-pill"><span class="db-dot" id="vcdb-dot"></span><span id="vcdb-lbl">VCDB not loaded</span></div>
+    <div class="db-pill"><span class="db-dot" id="pcdb-dot"></span><span id="pcdb-lbl">PCDB not loaded</span></div>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="nav-sec">Process</div>
+    <div class="nav-item on" onclick="sw('aces',this)"><span class="nav-dot"></span>ACES → Excel</div>
+    <div class="nav-item" onclick="sw('pies',this)"><span class="nav-dot"></span>PIES → Excel</div>
+    <div class="nav-sec">Results</div>
+    <div class="nav-item" onclick="sw('preview',this)"><span class="nav-dot"></span>Data preview</div>
+    <div class="nav-item" onclick="sw('cols',this)"><span class="nav-dot"></span>Column selector</div>
+    <div class="nav-item" onclick="sw('errors',this)"><span class="nav-dot"></span>Error report<span class="nav-badge" id="err-cnt-badge" style="display:none">0</span></div>
+    <div class="nav-sec">Databases</div>
+    <div class="nav-item" onclick="sw('dbs',this)"><span class="nav-dot"></span>DB inspector</div>
+  </nav>
+
+  <div class="main">
+
+    <!-- ═══ ACES PANEL ═══ -->
+    <div class="panel on" id="p-aces">
+      <div class="ph">ACES → Excel</div>
+      <div class="ps">Flatten ACES XML fitment data — runs entirely in your browser, no server needed</div>
+
+      <div class="ib ib-green"><i>✅</i><span><strong>Fully functional:</strong> drops your ACES XML + SQLite files → reads them in-browser → builds the flattened Excel and downloads it automatically.</span></div>
+
+      <div class="g2">
+        <div class="fz-wrap">
+          <div class="fz-lbl">ACES XML File <span class="tag tag-r">required</span></div>
+          <div class="fz" id="fz-ax" ondragover="dg(event,this)" ondragleave="dl(this)" ondrop="dp(event,this,'ax')">
+            <input type="file" accept=".xml" onchange="hf(this,'ax')">
+            <span class="fz-ico">📄</span>
+            <div id="ax-nm" class="fz-hint">Drop or click — ACES XML</div>
+          </div>
+        </div>
+        <div class="fz-wrap">
+          <div class="fz-lbl">VCDB SQLite <span class="tag tag-r">required</span></div>
+          <div class="fz" id="fz-vd" ondragover="dg(event,this)" ondragleave="dl(this)" ondrop="dp(event,this,'vd')">
+            <input type="file" accept=".sqlite,.db" onchange="hf(this,'vd')">
+            <span class="fz-ico">🗄️</span>
+            <div id="vd-nm" class="fz-hint">vcdb.sqlite</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="fz-wrap">
+          <div class="fz-lbl">PCDB SQLite <span class="tag tag-o">optional</span></div>
+          <div class="fz" id="fz-pd" ondragover="dg(event,this)" ondragleave="dl(this)" ondrop="dp(event,this,'pd')">
+            <input type="file" accept=".sqlite,.db" onchange="hf(this,'pd')">
+            <span class="fz-ico">🗄️</span>
+            <div id="pd-nm" class="fz-hint">pcdb.sqlite — PartType &amp; Position</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="ctitle">⚙️ Options</div>
+          <div class="opt-row"><button class="tog" id="tog-sv" onclick="togg('sv')"></button><span class="opt-lbl">Skip VCDB lookups</span></div>
+          <div class="opt-row" style="margin-bottom:0"><button class="tog on" id="tog-zp" onclick="togg('zp')"></button><span class="opt-lbl">Include empty columns in output</span></div>
+        </div>
+      </div>
+
+      <button class="btn btn-g btn-full" id="btn-a" onclick="runAces()">⚡ Convert &amp; Download Excel</button>
+
+      <div class="prog-wrap" id="a-pw">
+        <div class="prog-bar"><div class="prog-fill" id="a-pf"></div></div>
+        <div class="prog-st" id="a-ps">Preparing…</div>
+      </div>
+      <div class="log-box" id="a-log"></div>
+
+      <div class="stat-grid" id="a-stats" style="display:none">
+        <div class="sc"><div class="sv" id="st-rows">—</div><div class="sl">Total rows</div></div>
+        <div class="sc"><div class="sv b" id="st-cols">—</div><div class="sl">Columns</div></div>
+        <div class="sc"><div class="sv" id="st-makes">—</div><div class="sl">Unique makes</div></div>
+        <div class="sc"><div class="sv r" id="st-errs">0</div><div class="sl">Row errors</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ PIES PANEL ═══ -->
+    <div class="panel" id="p-pies">
+      <div class="ph">PIES → Excel</div>
+      <div class="ps">Parse PIES XML product data into multi-sheet Excel — runs in browser</div>
+
+      <div class="ib ib-green"><i>✅</i><span><strong>Fully functional:</strong> select one or more PIES XML files + optional pcdb.sqlite → downloads a multi-sheet Excel per file.</span></div>
+
+      <div class="g2">
+        <div class="fz-wrap">
+          <div class="fz-lbl">PIES XML Files <span class="tag tag-r">required</span></div>
+          <div class="fz" id="fz-pi" ondragover="dg(event,this)" ondragleave="dl(this)" ondrop="dpMulti(event,this,'pi')">
+            <input type="file" accept=".xml" multiple onchange="hfMulti(this,'pi')">
+            <span class="fz-ico">📁</span>
+            <div id="pi-nm" class="fz-hint">Drop one or more PIES XML files</div>
+          </div>
+        </div>
+        <div class="fz-wrap">
+          <div class="fz-lbl">PCDB SQLite <span class="tag tag-o">optional</span></div>
+          <div class="fz" id="fz-pp" ondragover="dg(event,this)" ondragleave="dl(this)" ondrop="dp(event,this,'pp')">
+            <input type="file" accept=".sqlite,.db" onchange="hf(this,'pp')">
+            <span class="fz-ico">🗄️</span>
+            <div id="pp-nm" class="fz-hint">pcdb.sqlite — PartTerminologyName &amp; PAName</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-b btn-full" id="btn-p" onclick="runPies()">▶ Convert &amp; Download Excel</button>
+
+      <div class="prog-wrap" id="p-pw">
+        <div class="prog-bar"><div class="prog-fill" id="p-pf"></div></div>
+        <div class="prog-st" id="p-ps">Preparing…</div>
+      </div>
+      <div class="log-box" id="p-log"></div>
+    </div>
+
+    <!-- ═══ PREVIEW PANEL ═══ -->
+    <div class="panel" id="p-preview">
+      <div class="ph">Data preview</div>
+      <div class="ps">Browse the last processed ACES output — filter, sort and export to CSV</div>
+
+      <div class="tbl-toolbar">
+        <input type="text" id="prev-filter" placeholder="🔍 Filter any column…" oninput="filterPreview()">
+        <select id="prev-rows" onchange="renderPreview()">
+          <option value="20">20 rows</option>
+          <option value="50">50 rows</option>
+          <option value="100">100 rows</option>
+          <option value="99999">All rows</option>
+        </select>
+        <button class="btn btn-o" onclick="exportCsv()">⬇ CSV</button>
+        <button class="btn btn-o" onclick="exportFullExcel()">⬇ Excel</button>
+      </div>
+
+      <div id="tbl-info" style="font-size:11px;color:var(--text3);margin-bottom:6px"></div>
+      <div class="tbl-outer" id="tbl-out">
+        <div class="tbl-empty">Process an ACES XML file first</div>
+      </div>
+    </div>
+
+    <!-- ═══ COLUMN SELECTOR ═══ -->
+    <div class="panel" id="p-cols">
+      <div class="ph">Column selector</div>
+      <div class="ps">Choose which of the 63 ACES output columns to include — updates immediately for next run</div>
+
+      <div class="card">
+        <div class="cpick-bar">
+          <input type="text" placeholder="🔍 Search columns…" oninput="filterColGrid(this.value)">
+          <div class="cpick-actions">
+            <button onclick="selAll()">All</button>
+            <button onclick="selNone()">None</button>
+            <button onclick="selPreset('core')">Core</button>
+            <button onclick="selPreset('engine')">Engine</button>
+            <button onclick="selPreset('trans')">Trans</button>
+            <button onclick="selPreset('brake')">Brake</button>
+          </div>
+          <span class="col-sel-info" id="col-count">63 / 63 selected</span>
+        </div>
+        <div class="cpick-grid" id="col-grid"></div>
+      </div>
+
+      <div class="ctitle" style="margin-bottom:6px">Active columns</div>
+      <div id="col-preview" style="font-family:var(--mono);font-size:11px;background:#1a1d27;color:#cdd6f4;padding:12px;border-radius:var(--r);line-height:1.9;max-height:110px;overflow-y:auto;word-break:break-all"></div>
+    </div>
+
+    <!-- ═══ ERROR REPORT ═══ -->
+    <div class="panel" id="p-errors">
+      <div class="ph">Error report</div>
+      <div class="ps">Warnings and errors from the last processing run</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn btn-o" onclick="clearErrors()">Clear all</button>
+        <button class="btn btn-o" onclick="downloadErrorLog()">⬇ Download log</button>
+      </div>
+      <div id="err-list"></div>
+    </div>
+
+    <!-- ═══ DB INSPECTOR ═══ -->
+    <div class="panel" id="p-dbs">
+      <div class="ph">Database inspector</div>
+      <div class="ps">Inspect loaded VCDB and PCDB tables in real time</div>
+
+      <div class="g2">
+        <div class="card">
+          <div class="ctitle">VCDB status</div>
+          <div id="vcdb-info" style="font-size:12px;color:var(--text2);line-height:2">Not loaded</div>
+        </div>
+        <div class="card">
+          <div class="ctitle">PCDB status</div>
+          <div id="pcdb-info" style="font-size:12px;color:var(--text2);line-height:2">Not loaded</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">SQL query (on loaded DBs)</div>
+        <textarea id="sql-query" rows="3" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:var(--r);font-family:var(--mono);font-size:12px;resize:vertical;outline:none;margin-bottom:8px" placeholder="SELECT * FROM BaseVehicle LIMIT 10"></textarea>
+        <div style="display:flex;gap:8px">
+          <select id="sql-db" style="padding:7px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;background:var(--surface)">
+            <option value="vcdb">VCDB</option>
+            <option value="pcdb">PCDB</option>
+          </select>
+          <button class="btn btn-g" onclick="runSQL()">▶ Run query</button>
+        </div>
+        <div class="tbl-outer" id="sql-result" style="margin-top:10px;max-height:280px">
+          <div class="tbl-empty">Enter a SQL query above</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SheetJS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  GLOBALS
+// ══════════════════════════════════════════════════════════════
+let SQLLIB = null, VCDB = null, PCDB = null;
+const FILES = {};
+const OPTS = {sv:false, zp:true};
+const ERRORS = [];
+let lastAcesRows = [], lastAcesCols = [];
+
+const ALL_COLS = [
+  "AppID","Action","Enginebaseid","basevehicleid","Year","Make","Model","VehicleType",
+  "PartNumberSKU","PartType","Qty","RegionName","SubModelName","Liter","CC","CID",
+  "Cylinders","BlockType","EngineDesignationName","EngineVersion","EngineVINName",
+  "HorsePower","KilowattPower","ValvesPerEngine","AspirationName","CylinderHeadTypeName",
+  "FuelTypeName","FuelSystemDesignName","FuelDeliveryTypeName","FuelDeliverySubTypeName",
+  "FuelSystemControlTypeName","IgnitionSystemTypeName","BodyNumDoors","BodyTypeName",
+  "MfrBodyCodeName","DriveTypeName","FrontSpringType","RearSpringType","SteeringSystemName",
+  "SteeringTypeName","TransmissionControlTypeName","TransmissionMfrCode","TransElecControlled",
+  "TransmissionMfrName","TransmissionNumSpeeds","TransmissionTypeName","BedLength",
+  "BedTypeName","WheelBase","WheelBaseMetric","PositionName","Note","Qualifierid",
+  "QualifierText","FrontBrakeType","BrakeSystemName","RearBrakeType","BrakeABSName",
+  "EngineMfrName","MfrLabel","Brand","BrandAAIAID"
+];
+const PRESETS = {
+  core:["AppID","Action","Year","Make","Model","VehicleType","PartNumberSKU","PartType","Qty","Note","Brand","BrandAAIAID"],
+  engine:["Liter","CC","CID","Cylinders","BlockType","EngineDesignationName","EngineVersion","HorsePower","KilowattPower","ValvesPerEngine","AspirationName","CylinderHeadTypeName","FuelTypeName","FuelDeliveryTypeName","FuelSystemDesignName","FuelSystemControlTypeName","IgnitionSystemTypeName","EngineMfrName","EngineVINName"],
+  trans:["TransmissionTypeName","TransmissionNumSpeeds","TransmissionControlTypeName","TransmissionMfrCode","TransmissionMfrName","TransElecControlled"],
+  brake:["FrontBrakeType","RearBrakeType","BrakeSystemName","BrakeABSName"]
+};
+let selectedCols = new Set(ALL_COLS);
+
+// Lookup maps (populated from SQLite)
+const LK = {
+  bv:{}, eb:{}, po:{}, asp:{}, braketype:{}, brakesys:{}, brakeabs:{},
+  region:{}, submodel:{}, engdes:{}, engver:{}, engvin:{}, valves:{},
+  cylhead:{}, fueltype:{}, fuelsysdes:{}, fueldeltype:{}, fueldelsub:{},
+  fuelsysctl:{}, ignsys:{}, bodynumdoors:{}, bodytype:{}, mfrbodycode:{},
+  drivetype:{}, springtype:{}, steersys:{}, steertype:{}, transctl:{},
+  transmfr:{}, transmfrcode:{}, transnumspeeds:{}, transtype:{},
+  bedlen:{}, bedtype:{}, wheelbase:{}, mfr:{},
+  // PCDB
+  partterm:{}, positions:{}
+};
+
+// ══════════════════════════════════════════════════════════════
+//  LOAD sql.js
+// ══════════════════════════════════════════════════════════════
+async function initSqlJs(){
+  try {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js';
+    document.head.appendChild(script);
+    await new Promise((res,rej)=>{script.onload=res;script.onerror=rej});
+    SQLLIB = await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}`});
+    document.getElementById('loader').classList.add('hide');
+  } catch(e){
+    document.getElementById('loader-msg').textContent = 'Failed to load sql.js: '+e.message;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NAV
+// ══════════════════════════════════════════════════════════════
+function sw(n,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('on'));
+  document.getElementById('p-'+n).classList.add('on');
+  el.classList.add('on');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FILE HANDLING
+// ══════════════════════════════════════════════════════════════
+function dg(e,el){e.preventDefault();el.classList.add('drag')}
+function dl(el){el.classList.remove('drag')}
+function dp(e,el,k){e.preventDefault();dl(el);const f=e.dataTransfer.files[0];if(f)sf(k,f,el)}
+function dpMulti(e,el,k){e.preventDefault();dl(el);if(e.dataTransfer.files.length)sfMulti(k,[...e.dataTransfer.files],el)}
+function hf(inp,k){if(inp.files[0])sf(k,inp.files[0],inp.closest('.fz'))}
+function hfMulti(inp,k){if(inp.files.length)sfMulti(k,[...inp.files],inp.closest('.fz'))}
+
+function sf(k,f,el){
+  FILES[k]=f; el.classList.remove('err-state'); el.classList.add('filled');
+  const nm=el.querySelector('.fz-hint,.fz-name');
+  if(nm){nm.className='fz-name';nm.textContent=f.name}
+  if(k==='vd') loadVCDB(f);
+  if(k==='pd'||k==='pp') loadPCDB(f);
+}
+function sfMulti(k,flist,el){
+  FILES[k]=flist; el.classList.add('filled');
+  const nm=el.querySelector('.fz-hint,.fz-name');
+  if(nm){nm.className='fz-name';nm.textContent=flist.length+' file'+(flist.length>1?'s':'')+' selected'}
+}
+
+function readFile(f){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.onerror=rej;
+    r.readAsArrayBuffer(f);
+  });
+}
+function readText(f){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.onerror=rej;
+    r.readAsText(f);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LOAD VCDB SQLite
+// ══════════════════════════════════════════════════════════════
+async function loadVCDB(f){
+  try {
+    log('a-log','Loading VCDB…','b');
+    const buf = await readFile(f);
+    VCDB = new SQLLIB.Database(new Uint8Array(buf));
+    buildVCDBLookups();
+    document.getElementById('vcdb-dot').classList.add('on');
+    document.getElementById('vcdb-lbl').textContent='VCDB loaded ✓';
+    document.getElementById('vcdb-lbl').style.color='var(--acc)';
+    log('a-log','VCDB loaded ✓','g');
+    updateDBInfo();
+  } catch(e){
+    addError('VCDB load failed',e.message);
+    log('a-log','VCDB load error: '+e.message,'e');
+    FILES.vd=null;
+    document.getElementById('fz-vd').classList.add('err-state');
+  }
+}
+
+function dbQuery(db,sql,params=[]){
+  try{
+    const stmt=db.prepare(sql);
+    stmt.bind(params);
+    const rows=[];
+    while(stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    return rows;
+  }catch(e){return []}
+}
+
+function buildVCDBLookups(){
+  // BaseVehicle with JOINs
+  const bvRows=dbQuery(VCDB,`
+    SELECT bv.BaseVehicleID, bv.YearID AS Year,
+           mk.MakeName, mo.ModelName, vt.VehicleTypeName
+    FROM BaseVehicle bv
+    JOIN Make mk ON mk.MakeID=bv.MakeID
+    JOIN Model mo ON mo.ModelID=bv.ModelID
+    JOIN VehicleType vt ON vt.VehicleTypeID=mo.VehicleTypeID`);
+  bvRows.forEach(r=>LK.bv[String(r.BaseVehicleID)]={
+    Year:String(r.Year), Make:r.MakeName, Model:r.ModelName, VehicleType:r.VehicleTypeName
+  });
+
+  // EngineBase
+  const ebRows=dbQuery(VCDB,'SELECT * FROM EngineBase');
+  ebRows.forEach(r=>LK.eb[String(r.EngineBaseID)]=r);
+
+  // PowerOutput
+  const poRows=dbQuery(VCDB,'SELECT PowerOutputID,HorsePower,KilowattPower FROM PowerOutput');
+  poRows.forEach(r=>LK.po[String(r.PowerOutputID)]=[String(r.HorsePower),String(r.KilowattPower)]);
+
+  // Simple lookups
+  const simple=[
+    ['Aspiration','AspirationID','AspirationName','asp'],
+    ['BrakeType','BrakeTypeID','BrakeTypeName','braketype'],
+    ['BrakeSystem','BrakeSystemID','BrakeSystemName','brakesys'],
+    ['BrakeABS','BrakeABSID','BrakeABSName','brakeabs'],
+    ['Region','RegionID','RegionName','region'],
+    ['SubModel','SubModelID','SubModelName','submodel'],
+    ['EngineDesignation','EngineDesignationID','EngineDesignationName','engdes'],
+    ['EngineVersion','EngineVersionID','EngineVersion','engver'],
+    ['EngineVIN','EngineVINID','EngineVINName','engvin'],
+    ['CylinderHeadType','CylinderHeadTypeID','CylinderHeadTypeName','cylhead'],
+    ['FuelType','FuelTypeID','FuelTypeName','fueltype'],
+    ['FuelSystemDesign','FuelSystemDesignID','FuelSystemDesignName','fuelsysdes'],
+    ['FuelDeliveryType','FuelDeliveryTypeID','FuelDeliveryTypeName','fueldeltype'],
+    ['FuelDeliverySubType','FuelDeliverySubTypeID','FuelDeliverySubTypeName','fueldelsub'],
+    ['FuelSystemControlType','FuelSystemControlTypeID','FuelSystemControlTypeName','fuelsysctl'],
+    ['IgnitionSystemType','IgnitionSystemTypeID','IgnitionSystemTypeName','ignsys'],
+    ['BodyNumDoors','BodyNumDoorsID','BodyNumDoors','bodynumdoors'],
+    ['BodyType','BodyTypeID','BodyTypeName','bodytype'],
+    ['MfrBodyCode','MfrBodyCodeID','MfrBodyCodeName','mfrbodycode'],
+    ['DriveType','DriveTypeID','DriveTypeName','drivetype'],
+    ['SpringType','SpringTypeID','SpringTypeName','springtype'],
+    ['SteeringSystem','SteeringSystemID','SteeringSystemName','steersys'],
+    ['SteeringType','SteeringTypeID','SteeringTypeName','steertype'],
+    ['TransmissionControlType','TransmissionControlTypeID','TransmissionControlTypeName','transctl'],
+    ['TransmissionMfrCode','TransmissionMfrCodeID','TransmissionMfrCode','transmfrcode'],
+    ['TransmissionNumSpeeds','TransmissionNumSpeedsID','TransmissionNumSpeeds','transnumspeeds'],
+    ['TransmissionType','TransmissionTypeID','TransmissionTypeName','transtype'],
+    ['BedType','BedTypeID','BedTypeName','bedtype'],
+    ['Mfr','MfrID','MfrName','mfr'],
+  ];
+  simple.forEach(([tbl,id,name,key])=>{
+    const rows=dbQuery(VCDB,`SELECT * FROM ${tbl}`);
+    rows.forEach(r=>LK[key][String(r[id])]=String(r[name]||''));
+  });
+
+  // Valves (different col name)
+  dbQuery(VCDB,'SELECT * FROM Valves').forEach(r=>{
+    const id=r.ValvesID||r.EngineID;
+    LK.valves[String(id)]=String(r.ValvesPerEngine||r.Valves||'');
+  });
+  // BedLength, WheelBase (numeric values)
+  dbQuery(VCDB,'SELECT * FROM BedLength').forEach(r=>LK.bedlen[String(r.BedLengthID)]=String(r.BedLength||''));
+  dbQuery(VCDB,'SELECT * FROM WheelBase').forEach(r=>LK.wheelbase[String(r.WheelBaseID)]=String(r.WheelBase||''));
+
+  log('a-log',`  BaseVehicle: ${Object.keys(LK.bv).length.toLocaleString()} | EngineBase: ${Object.keys(LK.eb).length.toLocaleString()} | PowerOutput: ${Object.keys(LK.po).length.toLocaleString()}`, 'g');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LOAD PCDB SQLite
+// ══════════════════════════════════════════════════════════════
+async function loadPCDB(f){
+  try{
+    const buf=await readFile(f);
+    PCDB=new SQLLIB.Database(new Uint8Array(buf));
+    dbQuery(PCDB,'SELECT PartTerminologyID,PartTerminologyName FROM Parts')
+      .forEach(r=>LK.partterm[String(r.PartTerminologyID)]=r.PartTerminologyName);
+    dbQuery(PCDB,'SELECT PositionID,Position FROM Positions')
+      .forEach(r=>LK.positions[String(r.PositionID)]=r.Position);
+    document.getElementById('pcdb-dot').classList.add('on');
+    document.getElementById('pcdb-lbl').textContent='PCDB loaded ✓';
+    document.getElementById('pcdb-lbl').style.color='var(--acc)';
+    log('a-log',`PCDB: ${Object.keys(LK.partterm).length.toLocaleString()} PartTerminology · ${Object.keys(LK.positions).length.toLocaleString()} Positions ✓`,'g');
+    log('p-log',`PCDB: ${Object.keys(LK.partterm).length.toLocaleString()} PartTerminology · ${Object.keys(LK.positions).length.toLocaleString()} Positions ✓`,'g');
+    updateDBInfo();
+  }catch(e){addError('PCDB load failed',e.message)}
+}
+
+function updateDBInfo(){
+  document.getElementById('vcdb-info').innerHTML=VCDB
+    ?`<span style="color:var(--acc)">✓ Loaded</span><br>BaseVehicle: ${Object.keys(LK.bv).length.toLocaleString()} rows<br>EngineBase: ${Object.keys(LK.eb).length.toLocaleString()} rows<br>PowerOutput: ${Object.keys(LK.po).length.toLocaleString()} rows<br>Lookups: ${Object.keys(LK.asp).length+Object.keys(LK.braketype).length+Object.keys(LK.fueltype).length}+ entries`
+    :'<span style="color:var(--text3)">Not loaded — drop vcdb.sqlite in ACES tab</span>';
+  document.getElementById('pcdb-info').innerHTML=PCDB
+    ?`<span style="color:var(--acc)">✓ Loaded</span><br>PartTerminology: ${Object.keys(LK.partterm).length.toLocaleString()} rows<br>Positions: ${Object.keys(LK.positions).length.toLocaleString()} rows`
+    :'<span style="color:var(--text3)">Not loaded — optional, drop pcdb.sqlite</span>';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LOOKUP HELPER
+// ══════════════════════════════════════════════════════════════
+function lk(map,id){
+  if(!id && id!==0) return '';
+  return map[String(id)]||map[String(parseInt(id,10))]||'';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PARSE ACES XML
+// ══════════════════════════════════════════════════════════════
+function parseACES(xmlStr){
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(xmlStr,'text/xml');
+  if(doc.querySelector('parseerror')) throw new Error('XML parse error: '+doc.querySelector('parseerror').textContent.slice(0,200));
+
+  const brand=(doc.querySelector('BrandAAIAID')||{textContent:''}).textContent;
+  const apps=doc.querySelectorAll('App');
+  const rows=[], rowErrors=[];
+
+  apps.forEach((app,idx)=>{
+    try{
+      const row={};
+      ALL_COLS.forEach(c=>row[c]='');
+
+      row.AppID=app.getAttribute('id')||'';
+      row.Action=app.getAttribute('action')||'';
+      row.BrandAAIAID=brand;
+
+      // Part
+      const partEl=app.querySelector('Part');
+      row.PartNumberSKU=partEl?partEl.textContent:'';
+      const mfrlbl=app.querySelector('MfrLabel');
+      row.MfrLabel=mfrlbl?mfrlbl.textContent:'';
+
+      // Qty
+      const qtyEl=app.querySelector('Qty');
+      row.Qty=qtyEl?qtyEl.textContent:'';
+
+      // Notes
+      row.Note=[...app.querySelectorAll('Note')].map(n=>n.textContent.trim()).join('; ');
+
+      // BaseVehicle
+      const bvEl=app.querySelector('BaseVehicle');
+      if(bvEl){
+        const bvid=bvEl.getAttribute('id');
+        row.basevehicleid=bvid||'';
+        if(bvid && LK.bv[bvid]){
+          const bv=LK.bv[bvid];
+          row.Year=bv.Year; row.Make=bv.Make; row.Model=bv.Model; row.VehicleType=bv.VehicleType;
+        }
+      }
+
+      // EngineBase
+      const ebEl=app.querySelector('EngineBase');
+      if(ebEl){
+        const ebid=ebEl.getAttribute('id');
+        row.Enginebaseid=ebid||'';
+        if(ebid && LK.eb[ebid]){
+          const eb=LK.eb[ebid];
+          row.Liter=String(eb.Liter||''); row.CC=String(eb.CC||'');
+          row.CID=String(eb.CID||''); row.Cylinders=String(eb.Cylinders||'');
+          row.BlockType=String(eb.BlockType||'');
+        }
+      }
+
+      // PowerOutput
+      const poEl=app.querySelector('PowerOutput');
+      if(poEl){
+        const po=LK.po[poEl.getAttribute('id')];
+        if(po){row.HorsePower=po[0];row.KilowattPower=po[1]}
+      }
+
+      // All simple lookups
+      const lkMap=[
+        ['EngineDesignation','engdes','EngineDesignationName'],
+        ['EngineVersion','engver','EngineVersion'],
+        ['EngineVIN','engvin','EngineVINName'],
+        ['Aspiration','asp','AspirationName'],
+        ['CylinderHeadType','cylhead','CylinderHeadTypeName'],
+        ['FuelType','fueltype','FuelTypeName'],
+        ['FuelSystemDesign','fuelsysdes','FuelSystemDesignName'],
+        ['FuelDeliveryType','fueldeltype','FuelDeliveryTypeName'],
+        ['FuelDeliverySubType','fueldelsub','FuelDeliverySubTypeName'],
+        ['FuelSystemControlType','fuelsysctl','FuelSystemControlTypeName'],
+        ['IgnitionSystemType','ignsys','IgnitionSystemTypeName'],
+        ['BodyType','bodytype','BodyTypeName'],
+        ['BodyNumDoors','bodynumdoors','BodyNumDoors'],
+        ['MfrBodyCode','mfrbodycode','MfrBodyCodeName'],
+        ['DriveType','drivetype','DriveTypeName'],
+        ['SteeringSystem','steersys','SteeringSystemName'],
+        ['SteeringType','steertype','SteeringTypeName'],
+        ['TransmissionControlType','transctl','TransmissionControlTypeName'],
+        ['TransmissionType','transtype','TransmissionTypeName'],
+        ['TransmissionNumSpeeds','transnumspeeds','TransmissionNumSpeeds'],
+        ['TransmissionMfrCode','transmfrcode','TransmissionMfrCode'],
+        ['BedType','bedtype','BedTypeName'],
+        ['BrakeSystem','brakesys','BrakeSystemName'],
+        ['BrakeABS','brakeabs','BrakeABSName'],
+        ['Region','region','RegionName'],
+        ['SubModel','submodel','SubModelName'],
+      ];
+      lkMap.forEach(([tag,key,col])=>{
+        const el=app.querySelector(tag); if(el) row[col]=lk(LK[key],el.getAttribute('id'));
+      });
+
+      // Valves
+      const valEl=app.querySelector('Valves'); if(valEl) row.ValvesPerEngine=lk(LK.valves,valEl.getAttribute('id'));
+
+      // BedLength, WheelBase
+      const blEl=app.querySelector('BedLength'); if(blEl) row.BedLength=lk(LK.bedlen,blEl.getAttribute('id'));
+      const wbEl=app.querySelector('WheelBase'); if(wbEl) row.WheelBase=lk(LK.wheelbase,wbEl.getAttribute('id'));
+
+      // Spring (Front/Rear)
+      const springs=app.querySelectorAll('SpringType');
+      springs.forEach((s,si)=>{
+        const v=lk(LK.springtype,s.getAttribute('id'));
+        if(si===0) row.FrontSpringType=v; else row.RearSpringType=v;
+      });
+
+      // Brake types (Front/Rear)
+      const bts=app.querySelectorAll('BrakeType');
+      bts.forEach((b,bi)=>{
+        const v=lk(LK.braketype,b.getAttribute('id'));
+        if(bi===0) row.FrontBrakeType=v; else row.RearBrakeType=v;
+      });
+
+      // Mfr (Engine / Transmission)
+      const mfrs=app.querySelectorAll('Mfr');
+      mfrs.forEach((m,mi)=>{
+        const v=lk(LK.mfr,m.getAttribute('id'));
+        if(mi===0) row.EngineMfrName=v; else row.TransmissionMfrName=v;
+      });
+
+      // PCDB lookups
+      const ptEl=app.querySelector('PartType');
+      if(ptEl) row.PartType=lk(LK.partterm,ptEl.getAttribute('id'))||ptEl.textContent;
+      const posEl=app.querySelector('Position');
+      if(posEl) row.PositionName=lk(LK.positions,posEl.getAttribute('id'));
+
+      // Qualifiers
+      const quals=app.querySelectorAll('Qual');
+      row.Qualifierid=[...quals].map(q=>q.getAttribute('id')||'').join(', ');
+      row.QualifierText=[...quals].map(q=>{const t=q.querySelector('text');return t?t.textContent:''}).filter(Boolean).join('; ');
+
+      // Brand (from AAIAID if available)
+      row.Brand=brand;
+
+      rows.push(row);
+    }catch(e){
+      rowErrors.push({row:idx,msg:e.message});
+    }
+  });
+
+  return {rows, rowErrors, brand, totalApps:apps.length};
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RUN ACES
+// ══════════════════════════════════════════════════════════════
+async function runAces(){
+  if(!FILES.ax){alert('Please select an ACES XML file.');return}
+  if(!OPTS.sv && !VCDB){alert('Please load vcdb.sqlite first, or enable "Skip VCDB lookups".');return}
+
+  const btn=document.getElementById('btn-a');
+  btn.disabled=true; btn.textContent='⏳ Processing…';
+  document.getElementById('a-log').innerHTML='';
+  document.getElementById('a-stats').style.display='none';
+  const pw=document.getElementById('a-pw');
+  pw.classList.add('show');
+
+  try{
+    setP('a',5,'Reading XML…');
+    log('a-log','Reading XML: '+FILES.ax.name,'b');
+    const xml=await readText(FILES.ax);
+
+    setP('a',20,'Parsing…');
+    log('a-log','Parsing App elements…','m');
+    await tick();
+
+    const {rows,rowErrors,totalApps}=parseACES(xml);
+    log('a-log',`Parsed ${totalApps.toLocaleString()} Apps → ${rows.length.toLocaleString()} rows`,'g');
+
+    // Log row errors
+    rowErrors.forEach(e=>addError(`App row #${e.row} parse error`,e.msg));
+    if(rowErrors.length) log('a-log',`⚠ ${rowErrors.length} row errors — see Error Report`,'w');
+
+    setP('a',55,'Applying column selection…');
+    await tick();
+
+    // Filter columns
+    const activeCols=OPTS.zp
+      ? ALL_COLS.filter(c=>selectedCols.has(c))
+      : ALL_COLS.filter(c=>selectedCols.has(c) && rows.some(r=>r[c]));
+
+    log('a-log',`Active columns: ${activeCols.length}`,'g');
+
+    // Stats
+    const makes=new Set(rows.map(r=>r.Make).filter(Boolean));
+    lastAcesRows=rows; lastAcesCols=activeCols;
+
+    document.getElementById('st-rows').textContent=rows.length.toLocaleString();
+    document.getElementById('st-cols').textContent=activeCols.length;
+    document.getElementById('st-makes').textContent=makes.size.toLocaleString();
+    document.getElementById('st-errs').textContent=rowErrors.length;
+    document.getElementById('a-stats').style.display='grid';
+
+    renderPreview();
+
+    setP('a',70,'Building Excel…');
+    log('a-log','Building Excel workbook…','b');
+    await tick();
+
+    // Build workbook with SheetJS
+    const wb=XLSX.utils.book_new();
+    const CHUNK=500000;
+    for(let start=0,sheet=1;start<rows.length;start+=CHUNK,sheet++){
+      const chunk=rows.slice(start,start+CHUNK);
+      const wsData=[activeCols, ...chunk.map(r=>activeCols.map(c=>r[c]||''))];
+      const ws=XLSX.utils.aoa_to_sheet(wsData);
+      // Column widths
+      ws['!cols']=activeCols.map(c=>({wch:Math.min(Math.max(c.length+2,10),35)}));
+      XLSX.utils.book_append_sheet(wb,ws,`Data_${sheet}`);
+    }
+
+    setP('a',90,'Downloading…');
+    log('a-log','Generating download…','b');
+    await tick();
+
+    const fname=(FILES.ax.name.replace(/\.xml$/i,'')+'_flattened.xlsx');
+    XLSX.writeFile(wb,fname);
+
+    setP('a',100,'Done ✓');
+    log('a-log','✓ Downloaded: '+fname,'g');
+    log('a-log',`Rows: ${rows.length.toLocaleString()} | Cols: ${activeCols.length} | Makes: ${makes.size.toLocaleString()}`,'g');
+
+  }catch(e){
+    log('a-log','ERROR: '+e.message,'e');
+    addError('ACES conversion failed',e.message);
+  }finally{
+    btn.disabled=false; btn.textContent='⚡ Convert & Download Excel';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PARSE PIES XML
+// ══════════════════════════════════════════════════════════════
+function parsePIES(xmlStr,filename){
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(xmlStr,'text/xml');
+  if(doc.querySelector('parseerror')) throw new Error('XML parse error');
+
+  const ns=(el)=>el?el.tagName.includes(':')?el.tagName.split(':')[0]+':':'':'';
+  const allTags=(tag)=>[...doc.getElementsByTagName(tag),...doc.getElementsByTagNameNS('*',tag)];
+
+  const hdr={},trl={};
+  const hdrEl=doc.querySelector('Header');
+  if(hdrEl)[...hdrEl.children].forEach(c=>{hdr['Header_'+c.localName]=c.textContent});
+  const trlEl=doc.querySelector('Trailer');
+  if(trlEl)[...trlEl.children].forEach(c=>{trl['Trailer_'+c.localName]=c.textContent});
+  const base={...hdr,...trl,xml_file_name:filename};
+
+  const Items=[],Descriptions=[],ProductAttributes=[],Packages=[],
+        Prices=[],DigitalAssets=[],PartInterchange=[],ExtendedInfo=[],MarketingCopy=[];
+
+  const items=allTags('Item');
+  items.forEach(item=>{
+    const d={...base};
+    [...item.children].forEach(c=>{if(!c.children.length)d[c.localName]=c.textContent});
+    Object.assign(d,item.getAttributeNames?Object.fromEntries(item.getAttributeNames().map(a=>[a,item.getAttribute(a)])):{}); 
+    const pn=d.PartNumber||'';
+
+    // Enrich with PCDB
+    if(d.PartTerminologyID) d.PartTerminologyName=LK.partterm[d.PartTerminologyID]||'';
+    Items.push(d);
+
+    // Descriptions
+    allTags('Description').forEach(el=>{
+      if(!item.contains(el))return;
+      const dd={...base,PartNumber:pn};
+      el.getAttributeNames&&el.getAttributeNames().forEach(a=>dd['Description_'+a]=el.getAttribute(a));
+      dd.Description_Text=el.textContent;
+      Descriptions.push(dd);
+    });
+
+    // ProductAttributes
+    allTags('ProductAttribute').forEach(el=>{
+      if(!item.contains(el))return;
+      const pd2={...base,PartNumber:pn};
+      el.getAttributeNames&&el.getAttributeNames().forEach(a=>pd2['ProductAttribute_'+a]=el.getAttribute(a));
+      pd2.ProductAttribute_Text=el.textContent;
+      if(pd2.ProductAttribute_AttributeID) pd2.PAName=LK.positions[pd2.ProductAttribute_AttributeID]||'';
+      ProductAttributes.push(pd2);
+    });
+
+    // Packages
+    allTags('Package').forEach(el=>{
+      if(!item.contains(el))return;
+      const pk={...base,PartNumber:pn};
+      [...el.children].forEach(c=>{if(!c.children.length)pk['Package_'+c.localName]=c.textContent});
+      el.getAttributeNames&&el.getAttributeNames().forEach(a=>pk['Package_'+a]=el.getAttribute(a));
+      Packages.push(pk);
+    });
+
+    // Prices
+    allTags('Pricing').forEach(el=>{
+      if(!item.contains(el))return;
+      const pr={...base,PartNumber:pn};
+      el.getAttributeNames&&el.getAttributeNames().forEach(a=>pr['Pricing_'+a]=el.getAttribute(a));
+      [...el.children].forEach(c=>{pr['Pricing_'+c.localName]=c.textContent});
+      Prices.push(pr);
+    });
+
+    // Extended info
+    allTags('ExtendedProductInformation').forEach(el=>{
+      if(!item.contains(el))return;
+      const ep={...base,PartNumber:pn};
+      el.getAttributeNames&&el.getAttributeNames().forEach(a=>ep['EPI_'+a]=el.getAttribute(a));
+      ep.EPI_Text=el.textContent;
+      ExtendedInfo.push(ep);
+    });
+
+    // DigitalAssets
+    allTags('DigitalFileInformation').forEach(el=>{
+      if(!item.contains(el))return;
+      const da={...base,PartNumber:pn};
+      [...el.children].forEach(c=>{if(!c.children.length)da['DFI_'+c.localName]=c.textContent});
+      el.getAttributeNames&&el.getAttributeNames().forEach(a=>da['DFI_'+a]=el.getAttribute(a));
+      DigitalAssets.push(da);
+    });
+
+    // PartInterchange
+    allTags('PartInterchange').forEach(el=>{
+      if(!item.contains(el))return;
+      const pi={...base,PartNumber:pn};
+      [...el.children].forEach(c=>{if(!c.children.length)pi['PI_'+c.localName]=c.textContent});
+      PartInterchange.push(pi);
+    });
+  });
+
+  return {Items,Descriptions,ProductAttributes,Packages,Prices,DigitalAssets,PartInterchange,ExtendedInfo,MarketingCopy};
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RUN PIES
+// ══════════════════════════════════════════════════════════════
+async function runPies(){
+  if(!FILES.pi||!FILES.pi.length){alert('Please select PIES XML files.');return}
+  const btn=document.getElementById('btn-p');
+  btn.disabled=true; btn.textContent='⏳ Processing…';
+  document.getElementById('p-log').innerHTML='';
+  document.getElementById('p-pw').classList.add('show');
+
+  const files=Array.isArray(FILES.pi)?FILES.pi:[FILES.pi];
+  let done=0;
+
+  for(const f of files){
+    try{
+      setP('p',Math.round((done/files.length)*90),'Processing '+f.name+'…');
+      log('p-log','Processing: '+f.name,'b');
+      const xml=await readText(f);
+      const sheets=parsePIES(xml,f.name);
+
+      const wb=XLSX.utils.book_new();
+      let hasSheet=false;
+      Object.entries(sheets).forEach(([name,rows])=>{
+        if(!rows.length)return;
+        const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))];
+        const wsData=[keys,...rows.map(r=>keys.map(k=>r[k]||''))];
+        const ws=XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols']=keys.map(k=>({wch:Math.min(Math.max(k.length+2,10),35)}));
+        const sheetName=name.substring(0,31);
+        XLSX.utils.book_append_sheet(wb,ws,sheetName);
+        hasSheet=true;
+        log('p-log',`  ${name}: ${rows.length.toLocaleString()} rows`,'g');
+      });
+
+      if(hasSheet){
+        const fname=f.name.replace(/\.xml$/i,'')+'_pies.xlsx';
+        XLSX.writeFile(wb,fname);
+        log('p-log','✓ Downloaded: '+fname,'g');
+      } else {
+        log('p-log','⚠ No data found in '+f.name,'w');
+      }
+      done++;
+    }catch(e){
+      log('p-log','ERROR '+f.name+': '+e.message,'e');
+      addError('PIES error: '+f.name,e.message);
+    }
+  }
+
+  setP('p',100,'Done ✓');
+  log('p-log',`Completed ${done}/${files.length} file(s)`,'g');
+  btn.disabled=false; btn.textContent='▶ Convert & Download Excel';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PREVIEW TABLE
+// ══════════════════════════════════════════════════════════════
+function renderPreview(){
+  if(!lastAcesRows.length){
+    document.getElementById('tbl-out').innerHTML='<div class="tbl-empty">Process an ACES XML file first</div>';
+    return;
+  }
+  const q=(document.getElementById('prev-filter').value||'').toLowerCase();
+  const maxRows=parseInt(document.getElementById('prev-rows').value)||20;
+  const cols=lastAcesCols;
+
+  let data=lastAcesRows;
+  if(q) data=data.filter(r=>Object.values(r).some(v=>String(v).toLowerCase().includes(q)));
+
+  document.getElementById('tbl-info').textContent=
+    `Showing ${Math.min(data.length,maxRows).toLocaleString()} of ${data.length.toLocaleString()} rows (filtered from ${lastAcesRows.length.toLocaleString()} total)`;
+
+  const slice=data.slice(0,maxRows);
+  let h='<table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+  h+=slice.map(r=>'<tr>'+cols.map(c=>`<td title="${String(r[c]||'').replace(/"/g,'&quot;')}">${r[c]||''}</td>`).join('')+'</tr>').join('');
+  h+='</tbody></table>';
+  document.getElementById('tbl-out').innerHTML=h;
+}
+function filterPreview(){renderPreview()}
+
+function exportCsv(){
+  if(!lastAcesRows.length){alert('Process ACES first.');return}
+  const cols=lastAcesCols;
+  const rows=[cols.join(','),...lastAcesRows.map(r=>cols.map(c=>`"${String(r[c]||'').replace(/"/g,'""')}"`).join(','))];
+  dl2(rows.join('\r\n'),'text/csv',FILES.ax?FILES.ax.name.replace(/\.xml$/i,'')+'_data.csv':'aces_data.csv');
+}
+
+function exportFullExcel(){
+  if(!lastAcesRows.length){alert('Process ACES first.');return}
+  const wb=XLSX.utils.book_new();
+  const cols=lastAcesCols;
+  const wsData=[cols,...lastAcesRows.map(r=>cols.map(c=>r[c]||''))];
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=cols.map(c=>({wch:Math.min(Math.max(c.length+2,10),35)}));
+  XLSX.utils.book_append_sheet(wb,ws,'Data');
+  XLSX.writeFile(wb,FILES.ax?FILES.ax.name.replace(/\.xml$/i,'')+'_full.xlsx':'aces_full.xlsx');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  COLUMN PICKER
+// ══════════════════════════════════════════════════════════════
+function buildColGrid(){
+  document.getElementById('col-grid').innerHTML=ALL_COLS.map(c=>
+    `<label class="ci ${selectedCols.has(c)?'sel':''}" data-col="${c}">
+       <input type="checkbox" ${selectedCols.has(c)?'checked':''} onchange="toggleCol('${c}',this)">
+       ${c}
+     </label>`).join('');
+  updateColInfo();
+}
+function toggleCol(c,el){
+  el.checked?selectedCols.add(c):selectedCols.delete(c);
+  el.closest('.ci').classList.toggle('sel',el.checked);
+  updateColInfo();
+}
+function filterColGrid(q){
+  document.querySelectorAll('.ci').forEach(el=>{
+    el.style.display=(!q||el.dataset.col.toLowerCase().includes(q.toLowerCase()))?'':'none';
+  });
+}
+function selAll(){selectedCols=new Set(ALL_COLS);buildColGrid()}
+function selNone(){selectedCols=new Set();buildColGrid()}
+function selPreset(p){
+  const pre=p==='core'?PRESETS.core:p==='engine'?[...PRESETS.core,...PRESETS.engine]:p==='trans'?[...PRESETS.core,...PRESETS.trans]:[...PRESETS.core,...PRESETS.brake];
+  selectedCols=new Set(pre);buildColGrid();
+}
+function updateColInfo(){
+  const sel=[...selectedCols];
+  document.getElementById('col-count').textContent=sel.length+' / '+ALL_COLS.length+' selected';
+  document.getElementById('col-preview').textContent=sel.join(', ');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ERRORS
+// ══════════════════════════════════════════════════════════════
+function addError(msg,detail=''){
+  ERRORS.push({msg,detail,time:new Date().toLocaleTimeString()});
+  const n=ERRORS.length;
+  const b=document.getElementById('err-cnt-badge');
+  b.style.display='inline';b.textContent=n;
+  document.getElementById('st-errs')&&(document.getElementById('st-errs').textContent=n);
+  renderErrors();
+}
+function renderErrors(){
+  const el=document.getElementById('err-list');
+  if(!ERRORS.length){el.innerHTML='<div class="tbl-empty" style="padding:40px">✅ No errors</div>';return}
+  el.innerHTML=ERRORS.map((e,i)=>`
+    <div class="err-item">
+      <div class="err-item-head"><span>${e.msg}</span><span style="font-size:11px;opacity:.6">${e.time}</span></div>
+      ${e.detail?`<div class="err-item-body">${e.detail}</div>`:''}
+    </div>`).join('');
+}
+function clearErrors(){
+  ERRORS.length=0;
+  document.getElementById('err-cnt-badge').style.display='none';
+  renderErrors();
+}
+function downloadErrorLog(){
+  if(!ERRORS.length){alert('No errors to download.');return}
+  const txt=ERRORS.map((e,i)=>`[${e.time}] ${e.msg}\n${e.detail||''}`).join('\n\n---\n\n');
+  dl2(txt,'text/plain','error_log.txt');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DB INSPECTOR — SQL runner
+// ══════════════════════════════════════════════════════════════
+function runSQL(){
+  const sql=document.getElementById('sql-query').value.trim();
+  const which=document.getElementById('sql-db').value;
+  const db=which==='vcdb'?VCDB:PCDB;
+  if(!db){document.getElementById('sql-result').innerHTML='<div class="tbl-empty">Load '+which.toUpperCase()+' first</div>';return}
+  if(!sql){return}
+  try{
+    const rows=dbQuery(db,sql);
+    if(!rows.length){document.getElementById('sql-result').innerHTML='<div class="tbl-empty">No results</div>';return}
+    const cols=Object.keys(rows[0]);
+    let h='<table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+    h+=rows.slice(0,500).map(r=>'<tr>'+cols.map(c=>`<td>${r[c]!==null&&r[c]!==undefined?r[c]:''}</td>`).join('')+'</tr>').join('');
+    h+='</tbody></table>';
+    document.getElementById('sql-result').innerHTML=h;
+  }catch(e){
+    document.getElementById('sql-result').innerHTML=`<div class="ib ib-red" style="margin:10px">${e.message}</div>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════════
+function log(id,msg,cls=''){
+  const b=document.getElementById(id);
+  const l=document.createElement('span');
+  l.className='ll '+(cls||''); l.textContent='› '+msg;
+  b.appendChild(l); b.scrollTop=b.scrollHeight;
+}
+function setP(id,pct,msg){
+  document.getElementById(id+'-pf').style.width=pct+'%';
+  document.getElementById(id+'-ps').textContent=msg;
+}
+function tick(){return new Promise(r=>setTimeout(r,0))}
+function togg(k){OPTS[k]=!OPTS[k];document.getElementById('tog-'+k).classList.toggle('on',OPTS[k])}
+function dl2(content,type,name){
+  const blob=new Blob([content],{type});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+}
+
+// Init
+buildColGrid();
+renderErrors();
+initSqlJs();
+</script>
+</body>
+</html>
